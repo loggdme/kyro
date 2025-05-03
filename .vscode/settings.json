@@ -1,0 +1,22 @@
+{
+  "editor.formatOnSave": true,
+
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.autoReveal": false,
+  "explorer.fileNesting.patterns": {
+    "go.mod": "go.sum,.editorconfig",
+    "Taskfile.yml": "Dockerfile",
+    "*.go": "$(capture)_test.go"
+  },
+
+  "cSpell.ignorePaths": ["go.mod", "go.sum"],
+
+  "biome.enabled": false,
+  "[json][jsonc][html][javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[go][go.mod]": {
+    "editor.defaultFormatter": "golang.go"
+  }
+}

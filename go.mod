@@ -1,4 +1,4 @@
-module github.com/loggd/kyro
+module github.com/loggdme/kyro
 
 go 1.24.0
 

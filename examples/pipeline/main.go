@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/loggd/kyro/pkg/pipeline"
+	"github.com/loggdme/kyro/pkg/pipeline"
 )
 
 func main() {

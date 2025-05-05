@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/loggd/kyro/pkg/limiter"
-	"github.com/loggd/kyro/pkg/pqueue"
+	"github.com/loggdme/kyro/pkg/limiter"
+	"github.com/loggdme/kyro/pkg/pqueue"
 )
 
 func main() {

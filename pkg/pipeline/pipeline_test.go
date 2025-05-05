@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/loggd/kyro/pkg/pipeline"
+	"github.com/loggdme/kyro/pkg/pipeline"
 	"github.com/stretchr/testify/assert"
 )
 

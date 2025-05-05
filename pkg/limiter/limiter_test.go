@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/loggd/kyro/pkg/limiter"
+	"github.com/loggdme/kyro/pkg/limiter"
 )
 
 func TestRateLimiter_Wait(t *testing.T) {

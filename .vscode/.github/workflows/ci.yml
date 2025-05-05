@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  kyro:
+    name: Lint, test and build pkg
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Install dependencies
+        run: go get .
+
+      - name: Check code formatting
+        run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+
+      - name: Check code style
+        run: go vet
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build application
+        run: go build -v -o app .

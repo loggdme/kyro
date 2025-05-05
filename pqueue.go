@@ -1,4 +1,4 @@
-package pqueue
+package kyro
 
 import (
 	"fmt"

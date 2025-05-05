@@ -6,8 +6,9 @@
   "explorer.autoReveal": false,
   "explorer.fileNesting.patterns": {
     "go.mod": "go.sum,.editorconfig",
+    "*.go": "$(capture)_test.go",
     "Taskfile.yml": "Dockerfile",
-    "*.go": "$(capture)_test.go"
+    "README.md": "LICENSE"
   },
 
   "cSpell.ignorePaths": ["go.mod", "go.sum"],

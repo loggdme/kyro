@@ -5,8 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/loggdme/kyro/pkg/limiter"
-	"github.com/loggdme/kyro/pkg/pqueue"
+	"github.com/loggdme/kyro"
 )
 
 func main() {
@@ -15,8 +14,8 @@ func main() {
 		ids = append(ids, i)
 	}
 
-	limiter := limiter.NewRateLimiter(40, 40)
-	erroredItems, err := pqueue.NewParallelQueue[int](40).
+	limiter := kyro.NewRateLimiter(40, 40)
+	erroredItems, err := kyro.NewParallelQueue[int](40).
 		Enqueue(&ids).
 		WithProgressNotifier(100, func(curr int, duration time.Duration, itemsPerSecond float64) {
 			log.Printf("Processed %d items in %s (%.2f items/sec)", curr, duration, itemsPerSecond)

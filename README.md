@@ -28,15 +28,19 @@ The `pqueue` package enables parallel processing of items with configurable work
 #### Example:
 
 ```go
+limiter := kyro.NewRateLimiter(40, 40)
 erroredItems, err := pqueue.NewParallelQueue[int](40).
     Enqueue(&ids).
     WithProgressNotifier(100, func(curr int, duration time.Duration, itemsPerSecond float64) {
         log.Printf("Processed %d items in %s (%.2f items/sec)", curr, duration, itemsPerSecond)
     }).
     OnProcessQueue(func(item int) error {
+        limiter.Wait()
+        
         if item%420 == 0 {
             return fmt.Errorf("simulated error for item %d", item)
         }
+        
         return nil
     }).
     Done()

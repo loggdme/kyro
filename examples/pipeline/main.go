@@ -3,36 +3,36 @@ package main
 import (
 	"fmt"
 
-	"github.com/loggdme/kyro/pkg/pipeline"
+	"github.com/loggdme/kyro"
 )
 
 func main() {
-	generateItems := pipeline.AsPipelineGenerator(func() (string, error) {
+	generateItems := kyro.AsPipelineGenerator(func() (string, error) {
 		return "Hello, Kyro Pipeline!", nil
 	})
 
-	stringLength := pipeline.AsPipelineStep(func(input string) (int, error) {
+	stringLength := kyro.AsPipelineStep(func(input string) (int, error) {
 		return len(input), nil
 	})
 
-	double := pipeline.AsPipelineStep(func(input int) (int, error) {
+	double := kyro.AsPipelineStep(func(input int) (int, error) {
 		return input * 2, nil
 	})
 
-	triple := pipeline.AsPipelineStep(func(input int) (int, error) {
+	triple := kyro.AsPipelineStep(func(input int) (int, error) {
 		return input * 3, nil
 	})
 
-	add := pipeline.AsPipelineStep(func(input []any) (int, error) {
-		first, second := pipeline.AssertIn[int](input[0]), pipeline.AssertIn[int](input[1])
+	add := kyro.AsPipelineStep(func(input []any) (int, error) {
+		first, second := kyro.AssertIn[int](input[0]), kyro.AssertIn[int](input[1])
 		return first + second, nil
 	})
 
-	result, err := pipeline.Execute(
+	result, err := kyro.Execute(
 		generateItems,
-		pipeline.InSequence(
+		kyro.InSequence(
 			stringLength,
-			pipeline.InParallel(double, triple),
+			kyro.InParallel(double, triple),
 			add,
 		),
 	)

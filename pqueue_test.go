@@ -1,4 +1,4 @@
-package pqueue_test
+package kyro_test
 
 import (
 	"errors"
@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/loggdme/kyro/pkg/pqueue"
+	"github.com/loggdme/kyro"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParallelQueue_Done_Success(t *testing.T) {
-	q := pqueue.NewParallelQueue[int](3)
+	q := kyro.NewParallelQueue[int](3)
 	items := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	processedItems := []int{}
 	var mu sync.Mutex
@@ -44,7 +44,7 @@ func TestParallelQueue_Done_Success(t *testing.T) {
 }
 
 func TestParallelQueue_Done_WithError(t *testing.T) {
-	q := pqueue.NewParallelQueue[int](2)
+	q := kyro.NewParallelQueue[int](2)
 	items := []int{1, 2, 3, 4, 5}
 	expectedError := errors.New("processing error")
 	erroredItemsNotifier := []int{}
@@ -90,7 +90,7 @@ func TestParallelQueue_Done_WithError(t *testing.T) {
 }
 
 func TestParallelQueue_Done_NoWorkers(t *testing.T) {
-	q := pqueue.NewParallelQueue[int](0)
+	q := kyro.NewParallelQueue[int](0)
 	items := []int{1, 2}
 	q.Enqueue(&items).OnProcessQueue(func(item int) error { return nil })
 
@@ -101,7 +101,7 @@ func TestParallelQueue_Done_NoWorkers(t *testing.T) {
 }
 
 func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
-	q := pqueue.NewParallelQueue[int](2)
+	q := kyro.NewParallelQueue[int](2)
 	items := make([]int, 200)
 	for i := range items {
 		items[i] = i + 1

@@ -1,14 +1,14 @@
-package limiter_test
+package kyro_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/loggdme/kyro/pkg/limiter"
+	"github.com/loggdme/kyro"
 )
 
 func TestRateLimiter_Wait(t *testing.T) {
-	rl := limiter.NewRateLimiter(2, 2)
+	rl := kyro.NewRateLimiter(2, 2)
 
 	// The first call should not block (due to burst)
 	start := time.Now()

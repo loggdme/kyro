@@ -6,7 +6,7 @@ on:
 
 jobs:
   kyro:
-    name: Lint, test and build pkg
+    name: Lint, test loggdme/kyro
     runs-on: ubuntu-latest
 
     steps:
@@ -19,13 +19,10 @@ jobs:
           go-version: '1.24.2'
 
       - name: Check code formatting
-        run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+        run: if [ "$( gofmt -s -l .| wc -l)" -gt 0 ]; then exit 1; fi
 
       - name: Check code style
-        run: go vet
+        run: go vet ./...
 
       - name: Run tests
         run: go test -v ./...
-
-      - name: Build application
-        run: go build -v -o app .

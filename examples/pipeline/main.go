@@ -11,26 +11,26 @@ func main() {
 		return "Hello, Kyro Pipeline!", nil
 	})
 
-	stringLength := kyro.AsPipelineStep(func(input string) (int, error) {
-		return len(input), nil
+	stringLength := kyro.AsPipelineStep(func(input string, err error) (int, error) {
+		return len(input), err
 	})
 
-	double := kyro.AsPipelineStep(func(input int) (int, error) {
-		return input * 2, nil
+	double := kyro.AsPipelineStep(func(input int, err error) (int, error) {
+		return input * 2, err
 	})
 
-	triple := kyro.AsPipelineStep(func(input int) (int, error) {
-		return input * 3, nil
+	triple := kyro.AsPipelineStep(func(input int, err error) (int, error) {
+		return input * 3, err
 	})
 
-	add := kyro.AsPipelineStep(func(input []any) (int, error) {
+	add := kyro.AsPipelineStep(func(input []any, err error) (int, error) {
 		first, second := kyro.AssertIn[int](input[0]), kyro.AssertIn[int](input[1])
-		return first + second, nil
+		return first + second, err
 	})
 
 	result, err := kyro.Execute(
-		generateItems,
 		kyro.InSequence(
+			generateItems,
 			stringLength,
 			kyro.InParallel(double, triple),
 			add,

@@ -22,7 +22,7 @@ func intGenerator() (int, error) {
 	return 10, nil
 }
 
-func intToStringStep(input int) (string, error) {
+func intToStringStep(input int, err error) (string, error) {
 	return fmt.Sprintf("%d", input), nil
 }
 
@@ -30,16 +30,16 @@ func errorGenerator() (any, error) {
 	return nil, errors.New("error from generator")
 }
 
-func addOneStep(input int) (int, error) {
+func addOneStep(input int, err error) (int, error) {
 	return input + 1, nil
 }
 
-func multiplyByTwoStep(input int) (int, error) {
+func multiplyByTwoStep(input int, err error) (int, error) {
 	return input * 2, nil
 }
 
 func sleepAndReturnIntStep(input int, duration time.Duration) kyro.PipelineStep {
-	return kyro.AsPipelineStep(func(i int) (int, error) {
+	return kyro.AsPipelineStep(func(i int, err error) (int, error) {
 		time.Sleep(duration)
 		return input, nil
 	})
@@ -48,20 +48,25 @@ func sleepAndReturnIntStep(input int, duration time.Duration) kyro.PipelineStep 
 /* ====== Test Cases ====== */
 
 func TestExecute_Success(t *testing.T) {
-	generator := kyro.AsPipelineGenerator(intGenerator)
-	p := kyro.AsPipelineStep(intToStringStep)
+	p := kyro.InSequence(
+		kyro.AsPipelineGenerator(intGenerator),
+		kyro.AsPipelineStep(intToStringStep),
+	)
 
-	output, err := kyro.Execute(generator, p)
+	output, err := kyro.Execute(p)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "10", output)
 }
 
 func TestExecute_GeneratorError(t *testing.T) {
-	generator := kyro.AsPipelineGenerator(errorGenerator)
-	p := kyro.AsPipelineStep(intToStringStep)
+	p := kyro.InSequence(
+		kyro.AsPipelineGenerator(errorGenerator),
+		kyro.ExitOnErrorStep(),
+		kyro.AsPipelineStep(intToStringStep),
+	)
 
-	output, err := kyro.Execute(generator, p)
+	output, err := kyro.Execute(p)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error from generator")
@@ -69,13 +74,14 @@ func TestExecute_GeneratorError(t *testing.T) {
 }
 
 func TestExecute_PipelineError(t *testing.T) {
-	generator := kyro.AsPipelineGenerator(intGenerator)
+	p := kyro.InSequence(
+		kyro.AsPipelineGenerator(intGenerator),
+		kyro.AsPipelineStep(func(input any, err error) (any, error) {
+			return nil, errors.New("error from pipeline step")
+		}),
+	)
 
-	errorPipeline := func(input any) (any, error) {
-		return nil, errors.New("error from pipeline step")
-	}
-
-	output, err := kyro.Execute(generator, errorPipeline)
+	output, err := kyro.Execute(p)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error from pipeline step")
@@ -84,7 +90,7 @@ func TestExecute_PipelineError(t *testing.T) {
 
 func TestAsPipelineGenerator_TypeConversion(t *testing.T) {
 	generator := kyro.AsPipelineGenerator(intGenerator)
-	output, err := generator()
+	output, err := kyro.Execute(generator)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 10, output)
@@ -94,7 +100,7 @@ func TestAsPipelineStep_Success(t *testing.T) {
 	pipeline := kyro.AsPipelineStep(intToStringStep)
 	input := 25
 
-	output, err := pipeline(input)
+	output, err := pipeline(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "25", output)
@@ -105,7 +111,7 @@ func TestAsPipelineStep_InputTypeMismatch_Panics(t *testing.T) {
 	input := "hello"
 
 	assert.PanicsWithValue(t, "expected type int, got string", func() {
-		pipeline(input)
+		pipeline(input, nil)
 	})
 }
 
@@ -139,7 +145,7 @@ func TestInSequence_Success(t *testing.T) {
 	sequence := kyro.InSequence(step1, step2, step3)
 
 	input := 5
-	output, err := sequence(input)
+	output, err := sequence(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "12", output)
@@ -147,15 +153,15 @@ func TestInSequence_Success(t *testing.T) {
 
 func TestInSequence_ErrorInMiddle(t *testing.T) {
 	step1 := kyro.AsPipelineStep(addOneStep)
-	step2 := func(input any) (any, error) {
+	step2 := func(input any, err error) (any, error) {
 		return nil, errors.New("error in sequence step")
 	}
 	step3 := kyro.AsPipelineStep(multiplyByTwoStep)
 
-	sequenceWithErr := kyro.InSequence(step1, step2, step3)
+	sequenceWithErr := kyro.InSequence(step1, step2, kyro.ExitOnErrorStep(), step3)
 
 	input := 5
-	output, err := sequenceWithErr(input)
+	output, err := sequenceWithErr(input, nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error in sequence step")
@@ -166,7 +172,7 @@ func TestInSequence_EmptySequence(t *testing.T) {
 	sequence := kyro.InSequence()
 	input := "initial input"
 
-	output, err := sequence(input)
+	output, err := sequence(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "initial input", output) // Should return the original input
@@ -177,27 +183,27 @@ func TestInSequence_SingleStep(t *testing.T) {
 	sequence := kyro.InSequence(step)
 	input := 42
 
-	output, err := sequence(input)
+	output, err := sequence(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "42", output)
 }
 
 func TestInParallel_Success(t *testing.T) {
-	step1 := kyro.AsPipelineStep(func(input int) (string, error) {
+	step1 := kyro.AsPipelineStep(func(input int, err error) (string, error) {
 		return fmt.Sprintf("step1: %d", input), nil
 	})
-	step2 := kyro.AsPipelineStep(func(input int) (int, error) {
+	step2 := kyro.AsPipelineStep(func(input int, err error) (int, error) {
 		return input * 10, nil
 	})
-	step3 := kyro.AsPipelineStep(func(input int) (bool, error) {
+	step3 := kyro.AsPipelineStep(func(input int, err error) (bool, error) {
 		return input > 5, nil
 	})
 
 	parallel := kyro.InParallel(step1, step2, step3)
 	input := 7
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.NoError(t, err)
 
@@ -212,7 +218,7 @@ func TestInParallel_Success(t *testing.T) {
 
 func TestInParallel_ErrorInOneStep(t *testing.T) {
 	step1 := kyro.AsPipelineStep(addOneStep)
-	errorStep := func(input any) (any, error) {
+	errorStep := func(input any, err error) (any, error) {
 		return nil, errors.New("parallel error")
 	}
 	step3 := kyro.AsPipelineStep(multiplyByTwoStep)
@@ -220,7 +226,7 @@ func TestInParallel_ErrorInOneStep(t *testing.T) {
 	parallel := kyro.InParallel(step1, errorStep, step3)
 	input := 10
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "parallel error")
@@ -228,11 +234,11 @@ func TestInParallel_ErrorInOneStep(t *testing.T) {
 }
 
 func TestInParallel_MultipleErrors(t *testing.T) {
-	errorStep1 := func(input any) (any, error) {
+	errorStep1 := func(input any, err error) (any, error) {
 		time.Sleep(50 * time.Millisecond)
 		return nil, errors.New("first parallel error")
 	}
-	errorStep2 := func(input any) (any, error) {
+	errorStep2 := func(input any, err error) (any, error) {
 		time.Sleep(10 * time.Millisecond)
 		return nil, errors.New("second parallel error")
 	}
@@ -240,7 +246,7 @@ func TestInParallel_MultipleErrors(t *testing.T) {
 	parallel := kyro.InParallel(errorStep1, errorStep2)
 	input := "some input"
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "second parallel error")
@@ -251,7 +257,7 @@ func TestInParallel_EmptyParallel(t *testing.T) {
 	parallel := kyro.InParallel()
 	input := "initial input"
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.NoError(t, err)
 	assert.Nil(t, output)
@@ -265,7 +271,7 @@ func TestInParallel_ConcurrencyCheckInOrder(t *testing.T) {
 	input := 0
 
 	startTime := time.Now()
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 	endTime := time.Now()
 
 	assert.NoError(t, err)
@@ -294,7 +300,7 @@ func TestInSequence_WithParallelSteps(t *testing.T) {
 	// Step 3: Combine the results from the parallel step (assuming they are strings)
 	// This requires a step that can handle the []any input from InParallel.
 	// Let's create one that expects []any and casts its elements.
-	combineResultsStep := func(input any) (any, error) {
+	combineResultsStep := func(input any, err error) (any, error) {
 		results, ok := input.([]any)
 		if !ok {
 			return nil, errors.New("expected []any input for combining results")
@@ -318,7 +324,7 @@ func TestInSequence_WithParallelSteps(t *testing.T) {
 
 	input := 5 // 5 -> 6 -> parallel({12, "6"}) -> "Num: 12, Str: 6"
 
-	output, err := sequence(input)
+	output, err := sequence(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "Num: 12, Str: 6", output)
@@ -326,17 +332,17 @@ func TestInSequence_WithParallelSteps(t *testing.T) {
 
 func TestInParallel_InputPropagation(t *testing.T) {
 	// Test that the same input is passed to each parallel step.
-	step1 := kyro.AsPipelineStep(func(input int) (int, error) {
+	step1 := kyro.AsPipelineStep(func(input int, err error) (int, error) {
 		return input + 1, nil
 	})
-	step2 := kyro.AsPipelineStep(func(input int) (int, error) {
+	step2 := kyro.AsPipelineStep(func(input int, err error) (int, error) {
 		return input * 2, nil
 	})
 
 	parallel := kyro.InParallel(step1, step2)
 	input := 10
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.NoError(t, err)
 	results, ok := output.([]any)
@@ -352,21 +358,21 @@ func TestComplexTypePipeline(t *testing.T) {
 		return ComplexType{Number: 10, Slice: []string{"a", "b"}}, nil
 	})
 
-	step1 := kyro.AsPipelineStep(func(input ComplexType) (ComplexType, error) {
+	step1 := kyro.AsPipelineStep(func(input ComplexType, err error) (ComplexType, error) {
 		input.Number = input.Number * 2
 		input.Slice = append(input.Slice, "c")
 		return input, nil
 	})
 
-	step2 := kyro.AsPipelineStep(func(input ComplexType) (ComplexType, error) {
+	step2 := kyro.AsPipelineStep(func(input ComplexType, err error) (ComplexType, error) {
 		input.Number = input.Number - 5
 		input.Slice[0] = "z"
 		return input, nil
 	})
 
-	p := kyro.InSequence(step1, step2)
+	p := kyro.InSequence(generator, step1, step2)
 
-	output, err := kyro.Execute(generator, p)
+	output, err := kyro.Execute(p)
 
 	if err != nil {
 		t.Fatalf("pipeline execution failed: %v", err)
@@ -388,17 +394,20 @@ func TestComplexTypeParallelPipeline(t *testing.T) {
 		return ComplexType{Number: 10, Slice: []string{"a", "b"}}, nil
 	})
 
-	stepNum := kyro.AsPipelineStep(func(input ComplexType) (ComplexType, error) {
+	stepNum := kyro.AsPipelineStep(func(input ComplexType, err error) (ComplexType, error) {
 		return ComplexType{Number: input.Number * 3, Slice: input.Slice}, nil
 	})
 
-	stepSlice := kyro.AsPipelineStep(func(input ComplexType) ([]string, error) {
+	stepSlice := kyro.AsPipelineStep(func(input ComplexType, err error) ([]string, error) {
 		return append(input.Slice, "c", "d"), nil
 	})
 
-	p := kyro.InParallel(stepNum, stepSlice)
+	p := kyro.InSequence(
+		generator,
+		kyro.InParallel(stepNum, stepSlice),
+	)
 
-	output, err := kyro.Execute(generator, p)
+	output, err := kyro.Execute(p)
 
 	if err != nil {
 		t.Fatalf("parallel pipeline execution failed: %v", err)
@@ -433,18 +442,18 @@ func TestComplexTypeParallelPipeline(t *testing.T) {
 }
 
 func TestInParallel_NilInput(t *testing.T) {
-	step1 := func(input any) (any, error) {
+	step1 := func(input any, err error) (any, error) {
 		assert.Nil(t, input)
 		return "step1 received nil", nil
 	}
-	step2 := func(input any) (any, error) {
+	step2 := func(input any, err error) (any, error) {
 		assert.Nil(t, input)
 		return "step2 received nil", nil
 	}
 
 	parallel := kyro.InParallel(step1, step2)
 
-	output, err := parallel(nil)
+	output, err := parallel(nil, nil)
 
 	assert.NoError(t, err)
 	results, ok := output.([]any)
@@ -456,31 +465,31 @@ func TestInParallel_NilInput(t *testing.T) {
 }
 
 func TestInSequence_NilInput(t *testing.T) {
-	step1 := func(input any) (any, error) {
+	step1 := func(input any, err error) (any, error) {
 		assert.Nil(t, input)
 		return "step1 received nil", nil
 	}
-	step2 := func(input any) (any, error) {
+	step2 := func(input any, err error) (any, error) {
 		assert.Equal(t, "step1 received nil", input)
 		return "step2 received step1 output", nil
 	}
 
 	sequence := kyro.InSequence(step1, step2)
 
-	output, err := sequence(nil)
+	output, err := sequence(nil, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "step2 received step1 output", output)
 }
 
 func TestInSequence_StepReturnsNilOutput(t *testing.T) {
-	step1 := func(input any) (any, error) {
+	step1 := func(input any, err error) (any, error) {
 		return "output from step1", nil
 	}
-	step2 := func(input any) (any, error) {
+	step2 := func(input any, err error) (any, error) {
 		return nil, nil
 	}
-	step3 := func(input any) (any, error) {
+	step3 := func(input any, err error) (any, error) {
 		assert.Nil(t, input)
 		return "step3 received nil", nil
 	}
@@ -488,27 +497,27 @@ func TestInSequence_StepReturnsNilOutput(t *testing.T) {
 	sequence := kyro.InSequence(step1, step2, step3)
 	input := "initial input"
 
-	output, err := sequence(input)
+	output, err := sequence(input, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "step3 received nil", output)
 }
 
 func TestInParallel_StepsReturnNilOutput(t *testing.T) {
-	step1 := func(input any) (any, error) {
+	step1 := func(input any, err error) (any, error) {
 		return "output 1", nil
 	}
-	step2 := func(input any) (any, error) {
+	step2 := func(input any, err error) (any, error) {
 		return nil, nil
 	}
-	step3 := func(input any) (any, error) {
+	step3 := func(input any, err error) (any, error) {
 		return "output 3", nil
 	}
 
 	parallel := kyro.InParallel(step1, step2, step3)
 	input := "initial input"
 
-	output, err := parallel(input)
+	output, err := parallel(input, nil)
 
 	assert.NoError(t, err)
 	results, ok := output.([]any)
@@ -518,4 +527,23 @@ func TestInParallel_StepsReturnNilOutput(t *testing.T) {
 	assert.Equal(t, "output 1", results[0])
 	assert.Nil(t, results[1])
 	assert.Equal(t, "output 3", results[2])
+}
+
+func TestErrorHandler_Sequential(t *testing.T) {
+	step1 := func(input any, err error) (any, error) {
+		return nil, errors.New("error in step 1")
+	}
+
+	step2 := func(input any, err error) (any, error) {
+		return "step 2 output", err
+	}
+
+	sequence := kyro.InSequence(step1, step2)
+	input := "initial input"
+
+	output, err := sequence(input, nil)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error in step 1")
+	assert.Equal(t, output, "step 2 output")
 }

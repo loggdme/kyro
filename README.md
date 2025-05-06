@@ -4,16 +4,16 @@ Welcome to the **Kyro** project! This repository contains a collection of utilit
 
 ## 📦 Core Packages
 
+You can find various examples demonstrating the usage of the core packages in the `examples` directory. Each example is self-contained and can be run independently.
+
 ### 1. **Pipeline** (`pkg/pipeline`)
 
 The `pipeline` package provides utilities for creating and executing sequential and parallel workflows.
 
-#### Example:
-
 ```go
 result, err := pipeline.Execute(
-    generateItems,
     pipeline.InSequence(
+        generateItems,
         stringLength,
         pipeline.InParallel(double, triple),
         add,
@@ -24,8 +24,6 @@ result, err := pipeline.Execute(
 ### 2. **Parallel Queue** (`pkg/pqueue`)
 
 The `pqueue` package enables parallel processing of items with configurable workers, progress notifications, and error handling.
-
-#### Example:
 
 ```go
 limiter := kyro.NewRateLimiter(40, 40)
@@ -45,25 +43,6 @@ erroredItems, err := pqueue.NewParallelQueue[int](40).
     }).
     Done()
 ```
-
----
-
-### 3. **Rate Limiter** (`pkg/limiter`)
-
-The `limiter` package wraps the `golang.org/x/time/rate` library to provide a simple interface for rate limiting.
-
-#### Example:
-
-```go
-limiter := limiter.NewRateLimiter(2, 2)
-if err := limiter.Wait(); err != nil {
-    log.Fatalf("Rate limiter error: %v", err)
-}
-```
-
-## 🧪 Examples
-
-You can find various examples demonstrating the usage of the core packages in the `examples` directory. Each example is self-contained and can be run independently.
 
 ## 📄 License
 

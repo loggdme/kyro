@@ -16,14 +16,14 @@ func main() {
 
 	limiter := kyro.NewRateLimiter(40, 40)
 	erroredItems, err := kyro.NewParallelQueue[int](40).
-		Enqueue(&ids).
+		WithItems(&ids).
 		WithProgressNotifier(100, func(curr int, duration time.Duration, itemsPerSecond float64) {
 			log.Printf("Processed %d items in %s (%.2f items/sec)", curr, duration, itemsPerSecond)
 		}).
 		WithErrorNotifier(func(err error, item int) {
 			log.Printf("Error processing item %d: %v", item, err)
 		}).
-		OnProcessQueue(func(item int) error {
+		OnProcessItem(func(item int) error {
 			limiter.Wait()
 
 			if item%420 == 0 {
@@ -32,7 +32,7 @@ func main() {
 
 			return nil
 		}).
-		Done()
+		Process()
 
 	if err != nil {
 		fmt.Printf("Error during data processing: %v", err)

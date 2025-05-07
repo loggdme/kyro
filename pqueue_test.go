@@ -17,8 +17,8 @@ func TestParallelQueue_Done_Success(t *testing.T) {
 	processedItems := []int{}
 	var mu sync.Mutex
 
-	q.Enqueue(&items).
-		OnProcessQueue(func(item int) error {
+	q.WithItems(&items).
+		OnProcessItem(func(item int) error {
 			mu.Lock()
 			processedItems = append(processedItems, item)
 			mu.Unlock()
@@ -26,7 +26,7 @@ func TestParallelQueue_Done_Success(t *testing.T) {
 			return nil
 		})
 
-	erroredItems, err := q.Done()
+	erroredItems, err := q.Process()
 
 	assert.NoError(t, err)
 	assert.Empty(t, *erroredItems)
@@ -50,8 +50,8 @@ func TestParallelQueue_Done_WithError(t *testing.T) {
 	erroredItemsNotifier := []int{}
 	var erroredItemsNotifierMu sync.Mutex
 
-	q.Enqueue(&items).
-		OnProcessQueue(func(item int) error {
+	q.WithItems(&items).
+		OnProcessItem(func(item int) error {
 			if item%2 == 0 {
 				return expectedError
 			}
@@ -65,7 +65,7 @@ func TestParallelQueue_Done_WithError(t *testing.T) {
 			erroredItemsNotifierMu.Unlock()
 		})
 
-	resultErroredItems, err := q.Done()
+	resultErroredItems, err := q.Process()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "encountered 2 errors during processing")
 
@@ -92,9 +92,9 @@ func TestParallelQueue_Done_WithError(t *testing.T) {
 func TestParallelQueue_Done_NoWorkers(t *testing.T) {
 	q := kyro.NewParallelQueue[int](0)
 	items := []int{1, 2}
-	q.Enqueue(&items).OnProcessQueue(func(item int) error { return nil })
+	q.WithItems(&items).OnProcessItem(func(item int) error { return nil })
 
-	erroredItems, err := q.Done()
+	erroredItems, err := q.Process()
 	assert.Error(t, err)
 	assert.EqualError(t, err, "number of workers must be positive")
 	assert.Empty(t, *erroredItems)
@@ -110,8 +110,8 @@ func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
 	progressNotifications := []int{}
 	var progressMu sync.Mutex
 
-	q.Enqueue(&items).
-		OnProcessQueue(func(item int) error {
+	q.WithItems(&items).
+		OnProcessItem(func(item int) error {
 			time.Sleep(5 * time.Millisecond)
 			return nil
 		}).
@@ -124,7 +124,7 @@ func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
 			assert.GreaterOrEqual(t, itemsPerSecond, float64(0))
 		})
 
-	_, err := q.Done()
+	_, err := q.Process()
 	assert.NoError(t, err)
 
 	// Check if progress was notified at the correct batches

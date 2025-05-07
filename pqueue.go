@@ -6,15 +6,6 @@ import (
 	"time"
 )
 
-// ProgressNotifier is a function type for notifying the progress of the queue processing.
-type ProgressNotifier func(curr int, duration time.Duration, itemsPerSecond float64)
-
-// ErrorNotifier is a function type for notifying about errors during processing.
-type ErrorNotifier[ITEM any] func(err error, item ITEM)
-
-// ProcessFunc is a function type for processing an item.
-type ProcessFunc[ITEM any] func(ITEM) error
-
 // ParallelQueue represents a queue for processing items in parallel.
 type ParallelQueue[ITEM any] struct {
 	items           *[]ITEM
@@ -38,14 +29,14 @@ func NewParallelQueue[ITEM any](numberOfWorkers int) *ParallelQueue[ITEM] {
 	}
 }
 
-// Enqueue sets the items to be processed by the queue.
-func (c *ParallelQueue[ITEM]) Enqueue(items *[]ITEM) *ParallelQueue[ITEM] {
+// WithItems sets the items to be processed by the queue.
+func (c *ParallelQueue[ITEM]) WithItems(items *[]ITEM) *ParallelQueue[ITEM] {
 	c.items = items
 	return c
 }
 
-// OnProcessQueue sets the function to be used for processing each item.
-func (c *ParallelQueue[ITEM]) OnProcessQueue(processFunc ProcessFunc[ITEM]) *ParallelQueue[ITEM] {
+// OnProcessItem sets the function to be used for processing each item.
+func (c *ParallelQueue[ITEM]) OnProcessItem(processFunc ProcessFunc[ITEM]) *ParallelQueue[ITEM] {
 	c.processFunc = processFunc
 	return c
 }
@@ -65,9 +56,9 @@ func (c *ParallelQueue[ITEM]) WithErrorNotifier(errorFunc ErrorNotifier[ITEM]) *
 	return c
 }
 
-// Done starts the parallel processing of the enqueued items. It returns a slice of items
+// Process starts the parallel processing of the enqueued items. It returns a slice of items
 // that failed to process and an error if any critical error occurred during setup or processing.
-func (c *ParallelQueue[ITEM]) Done() (*[]ITEM, error) {
+func (c *ParallelQueue[ITEM]) Process() (*[]ITEM, error) {
 	var erroredItems []ITEM
 
 	if c.numberOfWorkers <= 0 {

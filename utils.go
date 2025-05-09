@@ -1,6 +1,9 @@
 package kyro
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 func Map[T, V any](ts []T, fn func(val T, index int) V) []V {
 	result := make([]V, len(ts))
@@ -18,3 +21,14 @@ type ErrorNotifier[ITEM any] func(err error, item ITEM)
 
 // ProcessFunc is a function type for processing an item.
 type ProcessFunc[ITEM any] func(ITEM) error
+
+func SafeRemoveFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}

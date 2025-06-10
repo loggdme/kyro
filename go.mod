@@ -2,7 +2,7 @@ module github.com/loggdme/kyro
 
 go 1.24.0
 
-require golang.org/x/time v0.11.0
+require golang.org/x/time v0.12.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

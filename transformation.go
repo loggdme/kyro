@@ -15,7 +15,7 @@ func NilIfPointerDefault[T comparable](v *T) *T {
 }
 
 func NullishCoalescing[T comparable](v *T, defaultValue *T) *T {
-	if v == nil {
+	if v == nil || *v == *new(T) {
 		return defaultValue
 	}
 	return v

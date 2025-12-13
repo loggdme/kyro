@@ -14,6 +14,13 @@ func NilIfPointerDefault[T comparable](v *T) *T {
 	return v
 }
 
+func NullishCoalescing[T comparable](v *T, defaultValue *T) *T {
+	if v == nil {
+		return defaultValue
+	}
+	return v
+}
+
 type WeightedProportionCheck struct {
 	Score     int
 	Condition bool

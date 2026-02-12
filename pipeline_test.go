@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/loggdme/kyro"
-	"github.com/stretchr/testify/assert"
 )
 
 /* ====== Helper Functions ====== */
@@ -55,8 +55,12 @@ func TestExecute_Success(t *testing.T) {
 
 	output, err := kyro.Execute(p)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "10", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "10" {
+		t.Errorf("expected output '10', got %v", output)
+	}
 }
 
 func TestExecute_GeneratorError(t *testing.T) {
@@ -68,9 +72,15 @@ func TestExecute_GeneratorError(t *testing.T) {
 
 	output, err := kyro.Execute(p)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error from generator")
-	assert.Nil(t, output)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "error from generator") {
+		t.Errorf("expected error to contain 'error from generator', got: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestExecute_PipelineError(t *testing.T) {
@@ -83,17 +93,27 @@ func TestExecute_PipelineError(t *testing.T) {
 
 	output, err := kyro.Execute(p)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error from pipeline step")
-	assert.Nil(t, output)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "error from pipeline step") {
+		t.Errorf("expected error to contain 'error from pipeline step', got: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestAsPipelineGenerator_TypeConversion(t *testing.T) {
 	generator := kyro.AsPipelineGenerator(intGenerator)
 	output, err := kyro.Execute(generator)
 
-	assert.NoError(t, err)
-	assert.Equal(t, 10, output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != 10 {
+		t.Errorf("expected output 10, got %v", output)
+	}
 }
 
 func TestAsPipelineStep_Success(t *testing.T) {
@@ -102,39 +122,77 @@ func TestAsPipelineStep_Success(t *testing.T) {
 
 	output, err := pipeline(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "25", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "25" {
+		t.Errorf("expected output '25', got %v", output)
+	}
 }
 
 func TestAsPipelineStep_InputTypeMismatch_Panics(t *testing.T) {
 	pipeline := kyro.AsPipelineStep(intToStringStep)
 	input := "hello"
 
-	assert.PanicsWithValue(t, "expected type int, got string", func() {
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected panic")
+				return
+			}
+			if r != "expected type int, got string" {
+				t.Errorf("expected panic 'expected type int, got string', got: %v", r)
+			}
+		}()
 		pipeline(input, nil)
-	})
+	}()
 }
 
 func TestAssertIn_Success(t *testing.T) {
 	input := 123
 	assertedValue := kyro.AssertIn[int](input)
-	assert.Equal(t, 123, assertedValue)
+	if assertedValue != 123 {
+		t.Errorf("expected 123, got %v", assertedValue)
+	}
 
 	inputString := "test"
 	assertedString := kyro.AssertIn[string](inputString)
-	assert.Equal(t, "test", assertedString)
+	if assertedString != "test" {
+		t.Errorf("expected 'test', got %v", assertedString)
+	}
 }
 
 func TestAssertIn_Failure_Panics(t *testing.T) {
 	input := 123
-	assert.PanicsWithValue(t, "expected type string, got int", func() {
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected panic")
+				return
+			}
+			if r != "expected type string, got int" {
+				t.Errorf("expected panic 'expected type string, got int', got: %v", r)
+			}
+		}()
 		kyro.AssertIn[string](input)
-	})
+	}()
 
 	inputAny := any(456)
-	assert.PanicsWithValue(t, "expected type bool, got int", func() {
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected panic")
+				return
+			}
+			if r != "expected type bool, got int" {
+				t.Errorf("expected panic 'expected type bool, got int', got: %v", r)
+			}
+		}()
 		kyro.AssertIn[bool](inputAny)
-	})
+	}()
 }
 
 func TestInSequence_Success(t *testing.T) {
@@ -147,8 +205,12 @@ func TestInSequence_Success(t *testing.T) {
 	input := 5
 	output, err := sequence(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "12", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "12" {
+		t.Errorf("expected output '12', got %v", output)
+	}
 }
 
 func TestInSequence_ErrorInMiddle(t *testing.T) {
@@ -163,9 +225,15 @@ func TestInSequence_ErrorInMiddle(t *testing.T) {
 	input := 5
 	output, err := sequenceWithErr(input, nil)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error in sequence step")
-	assert.Nil(t, output)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "error in sequence step") {
+		t.Errorf("expected error to contain 'error in sequence step', got: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestInSequence_EmptySequence(t *testing.T) {
@@ -174,8 +242,12 @@ func TestInSequence_EmptySequence(t *testing.T) {
 
 	output, err := sequence(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "initial input", output) // Should return the original input
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "initial input" {
+		t.Errorf("expected output 'initial input', got %v", output) // Should return the original input
+	}
 }
 
 func TestInSequence_SingleStep(t *testing.T) {
@@ -185,8 +257,12 @@ func TestInSequence_SingleStep(t *testing.T) {
 
 	output, err := sequence(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "42", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "42" {
+		t.Errorf("expected output '42', got %v", output)
+	}
 }
 
 func TestInParallel_Success(t *testing.T) {
@@ -205,15 +281,27 @@ func TestInParallel_Success(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	results, ok := output.([]any)
-	assert.True(t, ok, "expected output to be a slice of any")
-	assert.Len(t, results, 3)
+	if !ok {
+		t.Error("expected output to be a slice of any")
+	}
+	if len(results) != 3 {
+		t.Errorf("expected 3 results, got %d", len(results))
+	}
 
-	assert.Equal(t, "step1: 7", results[0])
-	assert.Equal(t, 70, results[1])
-	assert.Equal(t, true, results[2])
+	if results[0] != "step1: 7" {
+		t.Errorf("expected results[0] 'step1: 7', got %v", results[0])
+	}
+	if results[1] != 70 {
+		t.Errorf("expected results[1] 70, got %v", results[1])
+	}
+	if results[2] != true {
+		t.Errorf("expected results[2] true, got %v", results[2])
+	}
 }
 
 func TestInParallel_ErrorInOneStep(t *testing.T) {
@@ -228,9 +316,15 @@ func TestInParallel_ErrorInOneStep(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "parallel error")
-	assert.Nil(t, output)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "parallel error") {
+		t.Errorf("expected error to contain 'parallel error', got: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestInParallel_MultipleErrors(t *testing.T) {
@@ -248,9 +342,15 @@ func TestInParallel_MultipleErrors(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "second parallel error")
-	assert.Nil(t, output)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "second parallel error") {
+		t.Errorf("expected error to contain 'second parallel error', got: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestInParallel_EmptyParallel(t *testing.T) {
@@ -259,8 +359,12 @@ func TestInParallel_EmptyParallel(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.NoError(t, err)
-	assert.Nil(t, output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != nil {
+		t.Errorf("expected nil output, got %v", output)
+	}
 }
 
 func TestInParallel_ConcurrencyCheckInOrder(t *testing.T) {
@@ -274,17 +378,29 @@ func TestInParallel_ConcurrencyCheckInOrder(t *testing.T) {
 	output, err := parallel(input, nil)
 	endTime := time.Now()
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	results, ok := output.([]any)
-	assert.True(t, ok)
-	assert.Len(t, results, 2)
+	if !ok {
+		t.Error("expected output to be []any")
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
 
 	duration := endTime.Sub(startTime)
-	assert.True(t, duration < 300*time.Millisecond, "parallel steps should run concurrently")
+	if duration >= 300*time.Millisecond {
+		t.Error("parallel steps should run concurrently")
+	}
 
-	assert.Equal(t, 1, results[0])
-	assert.Equal(t, 2, results[1])
+	if results[0] != 1 {
+		t.Errorf("expected results[0] 1, got %v", results[0])
+	}
+	if results[1] != 2 {
+		t.Errorf("expected results[1] 2, got %v", results[1])
+	}
 }
 
 func TestInSequence_WithParallelSteps(t *testing.T) {
@@ -326,8 +442,12 @@ func TestInSequence_WithParallelSteps(t *testing.T) {
 
 	output, err := sequence(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "Num: 12, Str: 6", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "Num: 12, Str: 6" {
+		t.Errorf("expected output 'Num: 12, Str: 6', got %v", output)
+	}
 }
 
 func TestInParallel_InputPropagation(t *testing.T) {
@@ -344,13 +464,23 @@ func TestInParallel_InputPropagation(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	results, ok := output.([]any)
-	assert.True(t, ok)
-	assert.Len(t, results, 2)
+	if !ok {
+		t.Error("expected output to be []any")
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
 
-	assert.Equal(t, 11, results[0])
-	assert.Equal(t, 20, results[1])
+	if results[0] != 11 {
+		t.Errorf("expected results[0] 11, got %v", results[0])
+	}
+	if results[1] != 20 {
+		t.Errorf("expected results[1] 20, got %v", results[1])
+	}
 }
 
 func TestComplexTypePipeline(t *testing.T) {
@@ -443,11 +573,15 @@ func TestComplexTypeParallelPipeline(t *testing.T) {
 
 func TestInParallel_NilInput(t *testing.T) {
 	step1 := func(input any, err error) (any, error) {
-		assert.Nil(t, input)
+		if input != nil {
+			t.Errorf("expected nil input, got %v", input)
+		}
 		return "step1 received nil", nil
 	}
 	step2 := func(input any, err error) (any, error) {
-		assert.Nil(t, input)
+		if input != nil {
+			t.Errorf("expected nil input, got %v", input)
+		}
 		return "step2 received nil", nil
 	}
 
@@ -455,22 +589,36 @@ func TestInParallel_NilInput(t *testing.T) {
 
 	output, err := parallel(nil, nil)
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	results, ok := output.([]any)
-	assert.True(t, ok)
-	assert.Len(t, results, 2)
+	if !ok {
+		t.Error("expected output to be []any")
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
 
-	assert.Equal(t, "step1 received nil", results[0])
-	assert.Equal(t, "step2 received nil", results[1])
+	if results[0] != "step1 received nil" {
+		t.Errorf("expected results[0] 'step1 received nil', got %v", results[0])
+	}
+	if results[1] != "step2 received nil" {
+		t.Errorf("expected results[1] 'step2 received nil', got %v", results[1])
+	}
 }
 
 func TestInSequence_NilInput(t *testing.T) {
 	step1 := func(input any, err error) (any, error) {
-		assert.Nil(t, input)
+		if input != nil {
+			t.Errorf("expected nil input, got %v", input)
+		}
 		return "step1 received nil", nil
 	}
 	step2 := func(input any, err error) (any, error) {
-		assert.Equal(t, "step1 received nil", input)
+		if input != "step1 received nil" {
+			t.Errorf("expected input 'step1 received nil', got %v", input)
+		}
 		return "step2 received step1 output", nil
 	}
 
@@ -478,8 +626,12 @@ func TestInSequence_NilInput(t *testing.T) {
 
 	output, err := sequence(nil, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "step2 received step1 output", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "step2 received step1 output" {
+		t.Errorf("expected output 'step2 received step1 output', got %v", output)
+	}
 }
 
 func TestInSequence_StepReturnsNilOutput(t *testing.T) {
@@ -490,7 +642,9 @@ func TestInSequence_StepReturnsNilOutput(t *testing.T) {
 		return nil, nil
 	}
 	step3 := func(input any, err error) (any, error) {
-		assert.Nil(t, input)
+		if input != nil {
+			t.Errorf("expected nil input, got %v", input)
+		}
 		return "step3 received nil", nil
 	}
 
@@ -499,8 +653,12 @@ func TestInSequence_StepReturnsNilOutput(t *testing.T) {
 
 	output, err := sequence(input, nil)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "step3 received nil", output)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if output != "step3 received nil" {
+		t.Errorf("expected output 'step3 received nil', got %v", output)
+	}
 }
 
 func TestInParallel_StepsReturnNilOutput(t *testing.T) {
@@ -519,14 +677,26 @@ func TestInParallel_StepsReturnNilOutput(t *testing.T) {
 
 	output, err := parallel(input, nil)
 
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	results, ok := output.([]any)
-	assert.True(t, ok)
-	assert.Len(t, results, 3)
+	if !ok {
+		t.Error("expected output to be []any")
+	}
+	if len(results) != 3 {
+		t.Errorf("expected 3 results, got %d", len(results))
+	}
 
-	assert.Equal(t, "output 1", results[0])
-	assert.Nil(t, results[1])
-	assert.Equal(t, "output 3", results[2])
+	if results[0] != "output 1" {
+		t.Errorf("expected results[0] 'output 1', got %v", results[0])
+	}
+	if results[1] != nil {
+		t.Errorf("expected results[1] nil, got %v", results[1])
+	}
+	if results[2] != "output 3" {
+		t.Errorf("expected results[2] 'output 3', got %v", results[2])
+	}
 }
 
 func TestErrorHandler_Sequential(t *testing.T) {
@@ -543,7 +713,13 @@ func TestErrorHandler_Sequential(t *testing.T) {
 
 	output, err := sequence(input, nil)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error in step 1")
-	assert.Equal(t, output, "step 2 output")
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "error in step 1") {
+		t.Errorf("expected error to contain 'error in step 1', got: %v", err)
+	}
+	if output != "step 2 output" {
+		t.Errorf("expected output 'step 2 output', got %v", output)
+	}
 }

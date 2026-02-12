@@ -2,13 +2,12 @@ package kyro_test
 
 import (
 	"errors"
-	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/loggdme/kyro"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestParallelQueue_Done_Success(t *testing.T) {
@@ -28,9 +27,15 @@ func TestParallelQueue_Done_Success(t *testing.T) {
 
 	erroredItems, err := q.Process()
 
-	assert.NoError(t, err)
-	assert.Empty(t, *erroredItems)
-	assert.Len(t, processedItems, len(items))
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if len(*erroredItems) != 0 {
+		t.Errorf("expected empty errored items, got %v", *erroredItems)
+	}
+	if len(processedItems) != len(items) {
+		t.Errorf("expected %d processed items, got %d", len(items), len(processedItems))
+	}
 
 	// Check if all items were processed
 	processedMap := make(map[int]bool)
@@ -39,7 +44,9 @@ func TestParallelQueue_Done_Success(t *testing.T) {
 	}
 
 	for _, item := range items {
-		assert.True(t, processedMap[item], fmt.Sprintf("Item %d was not processed", item))
+		if !processedMap[item] {
+			t.Errorf("Item %d was not processed", item)
+		}
 	}
 }
 
@@ -59,34 +66,50 @@ func TestParallelQueue_Done_WithError(t *testing.T) {
 			return nil
 		}).
 		WithErrorNotifier(func(err error, item int) {
-			assert.Equal(t, expectedError, err)
+			if err != expectedError {
+				t.Errorf("expected error %v, got %v", expectedError, err)
+			}
 			erroredItemsNotifierMu.Lock()
 			erroredItemsNotifier = append(erroredItemsNotifier, item)
 			erroredItemsNotifierMu.Unlock()
 		})
 
 	resultErroredItems, err := q.Process()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "encountered 2 errors during processing")
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && !strings.Contains(err.Error(), "encountered 2 errors during processing") {
+		t.Errorf("expected error to contain 'encountered 2 errors during processing', got: %v", err)
+	}
 
 	// Items 2 and 4 should error
-	assert.Len(t, *resultErroredItems, 2)
+	if len(*resultErroredItems) != 2 {
+		t.Errorf("expected 2 errored items, got %d", len(*resultErroredItems))
+	}
 
 	// Check if the correct items errored
 	erroredMap := make(map[int]bool)
 	for _, item := range *resultErroredItems {
 		erroredMap[item] = true
 	}
-	assert.True(t, erroredMap[2], "Item 2 should be in errored items")
-	assert.True(t, erroredMap[4], "Item 4 should be in errored items")
+	if !erroredMap[2] {
+		t.Error("Item 2 should be in errored items")
+	}
+	if !erroredMap[4] {
+		t.Error("Item 4 should be in errored items")
+	}
 
 	// Check if the error notifier was called for the correct items
 	notifierErroredMap := make(map[int]bool)
 	for _, item := range erroredItemsNotifier {
 		notifierErroredMap[item] = true
 	}
-	assert.True(t, notifierErroredMap[2], "Error notifier should have been called for item 2")
-	assert.True(t, notifierErroredMap[4], "Error notifier should have been called for item 4")
+	if !notifierErroredMap[2] {
+		t.Error("Error notifier should have been called for item 2")
+	}
+	if !notifierErroredMap[4] {
+		t.Error("Error notifier should have been called for item 4")
+	}
 }
 
 func TestParallelQueue_Done_NoWorkers(t *testing.T) {
@@ -95,9 +118,15 @@ func TestParallelQueue_Done_NoWorkers(t *testing.T) {
 	q.WithItems(&items).OnProcessItem(func(item int) error { return nil })
 
 	erroredItems, err := q.Process()
-	assert.Error(t, err)
-	assert.EqualError(t, err, "number of workers must be positive")
-	assert.Empty(t, *erroredItems)
+	if err == nil {
+		t.Error("expected error, got nil")
+	}
+	if err != nil && err.Error() != "number of workers must be positive" {
+		t.Errorf("expected error 'number of workers must be positive', got: %v", err)
+	}
+	if len(*erroredItems) != 0 {
+		t.Errorf("expected empty errored items, got %v", *erroredItems)
+	}
 }
 
 func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
@@ -119,13 +148,21 @@ func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
 			progressMu.Lock()
 			progressNotifications = append(progressNotifications, curr)
 			progressMu.Unlock()
-			assert.GreaterOrEqual(t, curr, 0)
-			assert.Greater(t, duration, time.Duration(0))
-			assert.GreaterOrEqual(t, itemsPerSecond, float64(0))
+			if curr < 0 {
+				t.Errorf("expected curr >= 0, got %d", curr)
+			}
+			if duration <= 0 {
+				t.Errorf("expected duration > 0, got %v", duration)
+			}
+			if itemsPerSecond < 0 {
+				t.Errorf("expected itemsPerSecond >= 0, got %f", itemsPerSecond)
+			}
 		})
 
 	_, err := q.Process()
-	assert.NoError(t, err)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	// Check if progress was notified at the correct batches
 	expectedNotifications := map[int]bool{50: false, 100: false, 150: false, 200: false}
@@ -136,8 +173,12 @@ func TestParallelQueue_Done_ProgressNotifier(t *testing.T) {
 	}
 
 	for notificationPoint, found := range expectedNotifications {
-		assert.True(t, found, fmt.Sprintf("Progress notification at %d was not received", notificationPoint))
+		if !found {
+			t.Errorf("Progress notification at %d was not received", notificationPoint)
+		}
 	}
 
-	assert.GreaterOrEqual(t, len(progressNotifications), len(expectedNotifications))
+	if len(progressNotifications) < len(expectedNotifications) {
+		t.Errorf("expected at least %d progress notifications, got %d", len(expectedNotifications), len(progressNotifications))
+	}
 }
